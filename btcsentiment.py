@@ -6,6 +6,11 @@ import requests
 from pandas_datareader import data as pdr
 import matplotlib.pyplot as plt
 from datetime import datetime
+import os
+from fredapi import Fred
+
+fred = Fred(api_key=os.environ["FRED_API_KEY"])
+liquidity = fred.get_series("WALCL")
 
 st.set_page_config(page_title="BTC Liquidity Signal", layout="wide")
 
