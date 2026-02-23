@@ -37,14 +37,19 @@ threshold = st.sidebar.slider("Signal Threshold", 0.1, 2.0, 0.5)
 # ----------------------------------
 
 @st.cache_data
+@st.cache_data
 def get_btc(start):
     btc = yf.download("BTC-USD", start=start)
+
+    # 🔥 Flatten MultiIndex columns if present
+    if isinstance(btc.columns, pd.MultiIndex):
+        btc.columns = btc.columns.get_level_values(0)
+
     btc['MA20'] = btc['Close'].rolling(20).mean()
     btc['MA50'] = btc['Close'].rolling(50).mean()
     btc['momentum_signal'] = np.where(btc['MA20'] > btc['MA50'], 1, -1)
-    return btc
 
-btc = get_btc(start_date)
+    return btc
 
 # ----------------------------------
 # 2. Liquidity Data (Fed WALCL)
