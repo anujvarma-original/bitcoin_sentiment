@@ -11,6 +11,9 @@ import requests
 import os
 
 FRED_API_KEY = st.secrets["FRED_API_KEY"]
+if "FRED_API_KEY" not in st.secrets:
+    st.error("FRED_API_KEY missing in Streamlit secrets")
+    st.stop()
 
 st.set_page_config(page_title="BTC Liquidity Signal", layout="wide")
 
