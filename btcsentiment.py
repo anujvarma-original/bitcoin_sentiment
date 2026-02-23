@@ -10,10 +10,11 @@ import requests
 import requests
 import os
 
-FRED_API_KEY = st.secrets["FRED_API_KEY"]
 if "FRED_API_KEY" not in st.secrets:
     st.error("FRED_API_KEY missing in Streamlit secrets")
     st.stop()
+
+FRED_API_KEY = st.secrets["FRED_API_KEY"]
 
 st.set_page_config(page_title="BTC Liquidity Signal", layout="wide")
 
@@ -105,6 +106,10 @@ def fng_signal(val):
 
 fng_df['fng_signal'] = fng_df['value'].apply(fng_signal)
 
+btc = get_btc(start_date)
+liquidity = get_liquidity(start_date)
+data = btc.join(liquidity[["liq_z"]], how="inner")
+
 # ----------------------------------
 # Merge Data
 # ----------------------------------
@@ -112,9 +117,6 @@ st.write("Liquidity type:", type(liquidity))
 st.write("Liquidity columns:", liquidity.columns)
 st.write("Liquidity tail:", liquidity.tail())
 
-btc = get_btc(start_date)
-liquidity = get_liquidity(start_date)
-data = btc.join(liquidity[["liq_z"]], how="inner")
 
 if "liq_z" not in liquidity.columns:
     st.error("Liquidity Z-score not calculated.")
