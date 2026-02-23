@@ -112,7 +112,9 @@ st.write("Liquidity type:", type(liquidity))
 st.write("Liquidity columns:", liquidity.columns)
 st.write("Liquidity tail:", liquidity.tail())
 
+btc = get_btc(start_date)
 liquidity = get_liquidity(start_date)
+data = btc.join(liquidity[["liq_z"]], how="inner")
 
 if "liq_z" not in liquidity.columns:
     st.error("Liquidity Z-score not calculated.")
