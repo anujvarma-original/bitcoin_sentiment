@@ -3,14 +3,41 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 import requests
-from pandas_datareader import data as pdr
 import matplotlib.pyplot as plt
 from datetime import datetime
 import os
-from fredapi import Fred
+import requests
+import os
 
-fred = Fred(api_key=os.environ["FRED_API_KEY"])
-liquidity = fred.get_series("WALCL")
+FRED_API_KEY = os.getenv("FRED_API_KEY")  # optional but recommended
+
+def get_liquidity(start_date):
+    url = "https://api.stlouisfed.org/fred/series/observations"
+    
+    params = {
+        "series_id": "WALCL",
+        "api_key": FRED_API_KEY,
+        "file_type": "json",
+        "observation_start": start_date.strftime("%Y-%m-%d")
+    }
+
+    r = requests.get(url, params=params)
+    data = r.json()
+
+    df = pd.DataFrame(data["observations"])
+    df["date"] = pd.to_datetime(df["date"])
+    df["value"] = pd.to_numeric(df["value"], errors="coerce")
+
+    df.set_index("date", inplace=True)
+    df = df.resample("D").ffill()
+
+    df["liq_mom"] = df["value"].pct_change(90)
+    df["liq_z"] = (
+        df["liq_mom"] - df["liq_mom"].rolling(180).mean()
+    ) / df["liq_mom"].rolling(180).std()
+
+    return df
+
 
 st.set_page_config(page_title="BTC Liquidity Signal", layout="wide")
 
@@ -47,16 +74,6 @@ btc = get_btc(start_date)
 # ----------------------------------
 
 @st.cache_data
-def get_liquidity(start):
-    liquidity = pdr.DataReader("WALCL", "fred", start=start)
-    liquidity = liquidity.resample('D').ffill()
-    liquidity['liq_mom'] = liquidity['WALCL'].pct_change(90)
-    liquidity['liq_z'] = (
-        liquidity['liq_mom'] - liquidity['liq_mom'].rolling(180).mean()
-    ) / liquidity['liq_mom'].rolling(180).std()
-    return liquidity
-
-liquidity = get_liquidity(start_date)
 
 # ----------------------------------
 # 3. Fear & Greed Index
