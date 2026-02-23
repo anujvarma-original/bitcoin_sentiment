@@ -112,8 +112,20 @@ def fng_signal(val):
 fng_df['fng_signal'] = fng_df['value'].apply(fng_signal)
 
 btc = get_btc(start_date)
+
+# Flatten multiindex if present
+btc.columns = [col[0] if isinstance(col, tuple) else col for col in btc.columns]
+
 liquidity = get_liquidity(start_date)
-data = btc.join(liquidity[["liq_z"]], how="inner")
+
+data = btc.join(liquidity[["liq_z"]], how="left")
+data["liq_z"] = data["liq_z"].ffill()
+
+if data.empty:
+    st.error("Merged dataset is empty. Check date alignment.")
+    st.stop()
+
+latest = data.iloc[-1]
 
 # ----------------------------------
 # Merge Data
