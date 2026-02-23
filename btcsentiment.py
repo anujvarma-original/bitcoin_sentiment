@@ -109,7 +109,13 @@ st.write("Liquidity type:", type(liquidity))
 st.write("Liquidity columns:", liquidity.columns)
 st.write("Liquidity tail:", liquidity.tail())
 
-data = btc.join(liquidity['liq_z'], how='inner')
+liquidity = get_liquidity(start_date)
+
+if "liq_z" not in liquidity.columns:
+    st.error("Liquidity Z-score not calculated.")
+    st.stop()
+
+data = btc.join(liquidity[["liq_z"]], how="inner")
 data = data.join(fng_df['fng_signal'], how='inner')
 data.dropna(inplace=True)
 
