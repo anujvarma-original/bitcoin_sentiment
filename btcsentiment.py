@@ -10,7 +10,7 @@ import requests
 import requests
 import os
 
-FRED_API_KEY = os.getenv("FRED_API_KEY")  
+FRED_API_KEY = st.secrets["FRED_API_KEY"]
 
 st.set_page_config(page_title="BTC Liquidity Signal", layout="wide")
 
