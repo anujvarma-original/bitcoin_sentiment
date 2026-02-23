@@ -43,7 +43,7 @@ def get_btc(start):
 
     # 🔥 Flatten MultiIndex columns if present
     if isinstance(btc.columns, pd.MultiIndex):
-        btc.columns = btc.columns.get_level_values(0)
+          btc.columns = [col[0] if isinstance(col, tuple) else col for col in btc.columns]
 
     btc['MA20'] = btc['Close'].rolling(20).mean()
     btc['MA50'] = btc['Close'].rolling(50).mean()
