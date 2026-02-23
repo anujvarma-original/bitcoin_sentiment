@@ -105,6 +105,9 @@ fng_df['fng_signal'] = fng_df['value'].apply(fng_signal)
 # ----------------------------------
 # Merge Data
 # ----------------------------------
+st.write("Liquidity type:", type(liquidity))
+st.write("Liquidity columns:", liquidity.columns)
+st.write("Liquidity tail:", liquidity.tail())
 
 data = btc.join(liquidity['liq_z'], how='inner')
 data = data.join(fng_df['fng_signal'], how='inner')
