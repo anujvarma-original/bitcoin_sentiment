@@ -7,37 +7,10 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import os
 import requests
+import requests
 import os
 
-FRED_API_KEY = os.getenv("FRED_API_KEY")  # optional but recommended
-
-def get_liquidity(start_date):
-    url = "https://api.stlouisfed.org/fred/series/observations"
-    
-    params = {
-        "series_id": "WALCL",
-        "api_key": FRED_API_KEY,
-        "file_type": "json",
-        "observation_start": start_date.strftime("%Y-%m-%d")
-    }
-
-    r = requests.get(url, params=params)
-    data = r.json()
-
-    df = pd.DataFrame(data["observations"])
-    df["date"] = pd.to_datetime(df["date"])
-    df["value"] = pd.to_numeric(df["value"], errors="coerce")
-
-    df.set_index("date", inplace=True)
-    df = df.resample("D").ffill()
-
-    df["liq_mom"] = df["value"].pct_change(90)
-    df["liq_z"] = (
-        df["liq_mom"] - df["liq_mom"].rolling(180).mean()
-    ) / df["liq_mom"].rolling(180).std()
-
-    return df
-
+FRED_API_KEY = os.getenv("FRED_API_KEY")  
 
 st.set_page_config(page_title="BTC Liquidity Signal", layout="wide")
 
@@ -74,6 +47,33 @@ btc = get_btc(start_date)
 # ----------------------------------
 
 @st.cache_data
+
+def get_liquidity(start_date):
+    url = "https://api.stlouisfed.org/fred/series/observations"
+    
+    params = {
+        "series_id": "WALCL",
+        "api_key": FRED_API_KEY,
+        "file_type": "json",
+        "observation_start": start_date.strftime("%Y-%m-%d")
+    }
+
+    r = requests.get(url, params=params)
+    data = r.json()
+
+    df = pd.DataFrame(data["observations"])
+    df["date"] = pd.to_datetime(df["date"])
+    df["value"] = pd.to_numeric(df["value"], errors="coerce")
+
+    df.set_index("date", inplace=True)
+    df = df.resample("D").ffill()
+
+    df["liq_mom"] = df["value"].pct_change(90)
+    df["liq_z"] = (
+        df["liq_mom"] - df["liq_mom"].rolling(180).mean()
+    ) / df["liq_mom"].rolling(180).std()
+
+    return df
 
 # ----------------------------------
 # 3. Fear & Greed Index
