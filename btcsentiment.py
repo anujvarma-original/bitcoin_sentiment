@@ -19,7 +19,6 @@ FRED_API_KEY = st.secrets["FRED_API_KEY"]
 # Streamlit Page Config
 # ------------------------------
 st.set_page_config(page_title="BTC Liquidity Signal", layout="wide")
-
 st.title("📊 Bitcoin Liquidity + Fear & Greed Signal")
 st.markdown("Short-term directional model combining macro liquidity, sentiment, and momentum.")
 
@@ -152,15 +151,24 @@ def direction(score):
         return 0
 
 data['signal'] = data['final_score'].apply(direction)
-
 latest = data.iloc[-1]
 latest_percentile = (data['final_score'] < latest['final_score']).mean() * 100
 
 # ------------------------------
+# Rolling Backtest / Cumulative Returns
+# ------------------------------
+data['BTC_Return'] = data['Close'].pct_change()
+data['Strategy_Return'] = data['signal'].shift(1) * data['BTC_Return']  # Shift to avoid lookahead
+
+data['BTC_Cum'] = (1 + data['BTC_Return']).cumprod()
+data['Strategy_Cum'] = (1 + data['Strategy_Return']).cumprod()
+
+# ------------------------------
 # Display Current Signal
 # ------------------------------
-col1, col2, col3, col4 = st.columns(4)
+st.subheader("Current Signal")
 
+col1, col2, col3, col4 = st.columns(4)
 col1.metric("Final Score", round(latest['final_score'], 2))
 col2.metric("Liquidity Z", round(latest['liq_z'], 2))
 col3.metric("F&G Signal", latest['fng_signal'])
@@ -177,9 +185,9 @@ else:
     st.warning("⚖️ Neutral Regime")
 
 # ------------------------------
-# Chart
+# Chart: BTC Price & Signal Score
 # ------------------------------
-st.subheader("BTC Price & Signal")
+st.subheader("BTC Price & Signal Score")
 
 fig, ax1 = plt.subplots(figsize=(12,6))
 ax1.plot(data.index, data['Close'], label="BTC Price", color='tab:blue')
@@ -195,7 +203,30 @@ fig.legend(loc="upper left")
 st.pyplot(fig)
 
 # ------------------------------
-# Data Table
+# Chart: Backtest / Strategy Performance
+# ------------------------------
+st.subheader("Strategy vs BTC Performance")
+
+fig2, ax = plt.subplots(figsize=(12,6))
+ax.plot(data.index, data['BTC_Cum'], label="BTC Cumulative", color='tab:blue')
+ax.plot(data.index, data['Strategy_Cum'], label="Strategy Cumulative", color='tab:green', linestyle='dashed')
+ax.set_ylabel("Cumulative Growth")
+ax.set_xlabel("Date")
+ax.legend()
+st.pyplot(fig2)
+
+# ------------------------------
+# Performance Metrics
+# ------------------------------
+st.subheader("Performance Summary (Since Start Date)")
+btc_return_total = (data['BTC_Cum'].iloc[-1] - 1) * 100
+strategy_return_total = (data['Strategy_Cum'].iloc[-1] - 1) * 100
+
+st.metric("BTC Total Return (%)", f"{btc_return_total:.2f}%")
+st.metric("Strategy Total Return (%)", f"{strategy_return_total:.2f}%")
+
+# ------------------------------
+# Recent Signals Table
 # ------------------------------
 st.subheader("Recent Signals")
 st.dataframe(
