@@ -155,8 +155,6 @@ def get_fng() -> pd.DataFrame:
     if fng_df.empty:
         return pd.DataFrame(columns=["value"])
 
-    # Fix: API timestamp can arrive as string.
-    # Convert safely to numeric before converting to datetime.
     fng_df["timestamp"] = pd.to_numeric(
         fng_df["timestamp"],
         errors="coerce"
@@ -182,9 +180,7 @@ def get_fng() -> pd.DataFrame:
     fng_df = fng_df.dropna(subset=["timestamp"])
 
     fng_df = fng_df.set_index("timestamp").sort_index()
-
     fng_df = fng_df[~fng_df.index.duplicated(keep="last")]
-
     fng_df = fng_df.resample("D").ffill()
 
     return fng_df
@@ -251,7 +247,7 @@ data["final_score"] = (
 )
 
 # ------------------------------
-# Thresholds
+# Percentile Thresholds
 # ------------------------------
 long_threshold = data["final_score"].quantile(percentile / 100)
 short_threshold = data["final_score"].quantile((100 - percentile) / 100)
@@ -292,7 +288,7 @@ col4.metric("Score Percentile", f"{latest_percentile:.1f}%")
 st.write(f"Long Threshold ({percentile}th pct): {round(float(long_threshold), 2)}")
 st.write(f"Short Threshold ({100 - percentile}th pct): {round(float(short_threshold), 2)}")
 
- if latest["signal"] == 1:
+if latest["signal"] == 1:
     st.success("📈 Expansion Regime / Long Signal")
 elif latest["signal"] == -1:
     st.error("📉 Contraction Regime / Risk-Off Signal")
@@ -308,12 +304,10 @@ fig, ax1 = plt.subplots(figsize=(12, 6))
 
 ax1.plot(data.index, data["Close"], label="BTC Price")
 ax1.set_ylabel("BTC Price")
-ax1.tick_params(axis="y")
 
 ax2 = ax1.twinx()
 ax2.plot(data.index, data["final_score"], linestyle="dashed", label="Signal Score")
 ax2.set_ylabel("Signal Score")
-ax2.tick_params(axis="y")
 
 fig.legend(loc="upper left")
 st.pyplot(fig)
