@@ -61,6 +61,24 @@ def normalize_daily_index(df: pd.DataFrame) -> pd.DataFrame:
     df = df[~df.index.duplicated(keep="last")].sort_index()
     return df
 
+
+def score_label(score: float) -> str:
+    if score > 1.5:
+        return "Strong Bullish"
+    elif score > 1.0:
+        return "Bullish"
+    elif score > 0.25:
+        return "Mild Bullish"
+    elif score > -0.25:
+        return "Neutral"
+    elif score > -1.0:
+        return "Mild Bearish"
+    elif score > -1.5:
+        return "Bearish"
+    else:
+        return "Strong Bearish"
+
+
 # ------------------------------
 # 1. BTC Price Data
 # ------------------------------
@@ -265,6 +283,10 @@ data["signal"] = data["final_score"].apply(direction)
 latest = data.iloc[-1]
 latest_percentile = (data["final_score"] < latest["final_score"]).mean() * 100
 
+liq_contribution = liq_weight * latest["liq_z"]
+fng_contribution = fng_weight * latest["fng_signal"]
+mom_contribution = mom_weight * latest["momentum_signal"]
+
 # ------------------------------
 # Backtest
 # ------------------------------
@@ -277,6 +299,97 @@ data["Strategy_Cum"] = (1 + data["Strategy_Return"]).cumprod()
 # Display Current Signal
 # ------------------------------
 st.subheader("Current Signal")
+
+# ------------------------------
+# Score Interpretation
+# ------------------------------
+with st.expander("📖 How To Interpret The Final Score", expanded=True):
+
+    st.markdown(f"""
+### Current Model Formula
+
+Final Score =  
+({liq_weight:.2f} × Liquidity Z-Score)  
++ ({fng_weight:.2f} × Fear & Greed Signal)  
++ ({mom_weight:.2f} × Momentum Signal)
+
+---
+
+### Liquidity Z-Score
+
+Measures whether Fed liquidity is expanding or contracting relative to history.
+
+| Liquidity Z | Meaning |
+|---|---|
+| > +1.5 | Strong liquidity expansion |
+| +0.5 to +1.5 | Moderate expansion |
+| -0.5 to +0.5 | Neutral |
+| -1.5 to -0.5 | Moderate contraction |
+| < -1.5 | Strong contraction |
+
+---
+
+### Fear & Greed Signal
+
+| Fear & Greed Index | Signal |
+|---|---|
+| < 25 | +1, Extreme Fear |
+| 25 to 75 | 0, Neutral |
+| > 75 | -1, Extreme Greed |
+
+The model assumes extreme fear is bullish and extreme greed is bearish.
+
+---
+
+### Momentum Signal
+
+| Condition | Signal |
+|---|---|
+| MA20 > MA50 | +1 |
+| MA20 < MA50 | -1 |
+
+---
+
+### Final Score Interpretation
+
+| Score Range | Interpretation |
+|---|---|
+| > 1.5 | Strong Bullish |
+| 1.0 to 1.5 | Bullish |
+| 0.25 to 1.0 | Mild Bullish |
+| -0.25 to +0.25 | Neutral |
+| -1.0 to -0.25 | Mild Bearish |
+| -1.5 to -1.0 | Bearish |
+| < -1.5 | Strong Bearish |
+
+---
+
+### Current Reading
+
+Current Score: **{latest['final_score']:.2f}**  
+Current Interpretation: **{score_label(float(latest['final_score']))}**
+
+Liquidity Contribution: **{liq_contribution:.2f}**  
+Fear & Greed Contribution: **{fng_contribution:.2f}**  
+Momentum Contribution: **{mom_contribution:.2f}**
+""")
+
+score = float(latest["final_score"])
+
+if score > 1.5:
+    st.success("🟢 Strong Bullish Environment")
+elif score > 1.0:
+    st.success("🟢 Bullish Environment")
+elif score > 0.25:
+    st.info("🟢 Mild Bullish Environment")
+elif score > -0.25:
+    st.warning("🟡 Neutral Environment")
+elif score > -1.0:
+    st.warning("🟠 Mild Bearish Environment")
+elif score > -1.5:
+    st.error("🔴 Bearish Environment")
+else:
+    st.error("🔴 Strong Bearish Environment")
 
 col1, col2, col3, col4 = st.columns(4)
 
@@ -294,6 +407,35 @@ elif latest["signal"] == -1:
     st.error("📉 Contraction Regime / Risk-Off Signal")
 else:
     st.warning("⚖️ Neutral Regime")
+
+# ------------------------------
+# Component Contributions
+# ------------------------------
+st.subheader("Score Component Contributions")
+
+contribution_df = pd.DataFrame({
+    "Component": ["Liquidity", "Fear & Greed", "Momentum"],
+    "Raw Signal": [
+        round(float(latest["liq_z"]), 2),
+        round(float(latest["fng_signal"]), 2),
+        round(float(latest["momentum_signal"]), 2)
+    ],
+    "Weight": [
+        liq_weight,
+        fng_weight,
+        mom_weight
+    ],
+    "Contribution": [
+        round(float(liq_contribution), 2),
+        round(float(fng_contribution), 2),
+        round(float(mom_contribution), 2)
+    ]
+})
+
+st.dataframe(
+    contribution_df,
+    use_container_width=True
+)
 
 # ------------------------------
 # Chart: BTC Price & Signal Score
